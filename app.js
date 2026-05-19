@@ -11,6 +11,7 @@ const db = {
         item.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         data.push(item);
         db.set(key, data);
+        return item.id;
     },
     remove: (key, id) => {
         let data = db.get(key);
@@ -30,43 +31,97 @@ const app = {
     gauge: null,
     
     init() {
-        const savedUser = localStorage.getItem('ecolens_user');
+        // Init users array if empty
+        if(!localStorage.getItem('ecolens_users_db')) {
+            localStorage.setItem('ecolens_users_db', JSON.stringify([
+                { name: 'Admin', username: 'admin', password: '123', role: 'Ingeniero' }
+            ]));
+        }
+
+        const savedUser = localStorage.getItem('ecolens_user_session');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
             this.showApp();
         }
         
-        this.initGauge();
-        this.dashboard.init();
-        this.hildegard.init();
-        this.monitoring.init();
+        // Wait for DOM
+        setTimeout(() => {
+            this.initGauge();
+            this.dashboard.init();
+            this.hildegard.init();
+            this.monitoring.init();
+            this.smed.init();
+            this.spaghetti.init();
+        }, 100);
     },
 
-    login() {
-        const user = document.getElementById('username').value;
-        if (!user) return alert('Ingrese un usuario');
-        
-        let role = 'Operador';
-        if (user.toLowerCase().includes('admin') || user.toLowerCase().includes('ing')) role = 'Ingeniero';
-        if (user.toLowerCase().includes('super')) role = 'Supervisor';
+    auth: {
+        toggleForm() {
+            const login = document.getElementById('form-login');
+            const reg = document.getElementById('form-register');
+            if (login.style.display === 'none') {
+                login.style.display = 'block';
+                reg.style.display = 'none';
+            } else {
+                login.style.display = 'none';
+                reg.style.display = 'block';
+            }
+        },
 
-        this.currentUser = { name: user, role: role };
-        localStorage.setItem('ecolens_user', JSON.stringify(this.currentUser));
-        this.showApp();
-    },
+        login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if (!user || !pass) return alert('Ingrese usuario y contraseña');
+            
+            const users = JSON.parse(localStorage.getItem('ecolens_users_db'));
+            const found = users.find(u => u.username === user && u.password === pass);
+            
+            if (found) {
+                app.currentUser = { name: found.name, role: found.role, username: found.username };
+                localStorage.setItem('ecolens_user_session', JSON.stringify(app.currentUser));
+                app.showApp();
+            } else {
+                alert('Credenciales incorrectas');
+            }
+        },
 
-    logout() {
-        localStorage.removeItem('ecolens_user');
-        this.currentUser = null;
-        document.getElementById('main-app').classList.remove('active');
-        document.getElementById('login-view').classList.add('active');
+        register() {
+            const name = document.getElementById('reg-name').value;
+            const user = document.getElementById('reg-username').value;
+            const pass = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+            
+            if (!name || !user || !pass) return alert('Complete todos los campos');
+            
+            const users = JSON.parse(localStorage.getItem('ecolens_users_db'));
+            if (users.find(u => u.username === user)) {
+                return alert('Ese usuario ya existe');
+            }
+            
+            users.push({ name, username: user, password: pass, role });
+            localStorage.setItem('ecolens_users_db', JSON.stringify(users));
+            
+            alert('Cuenta creada exitosamente. Por favor inicie sesión.');
+            this.toggleForm();
+        },
+
+        logout() {
+            localStorage.removeItem('ecolens_user_session');
+            app.currentUser = null;
+            document.getElementById('main-app').classList.remove('active');
+            document.getElementById('login-view').classList.add('active');
+            
+            // Clear inputs
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
     },
 
     showApp() {
         document.getElementById('login-view').classList.remove('active');
         document.getElementById('main-app').classList.add('active');
         
-        document.getElementById('user-info').innerText = `${this.currentUser.role} | ${this.currentUser.name}`;
+        document.getElementById('user-info').innerText = `${this.currentUser.role} | ${this.currentUser.username}`;
         
         if (this.currentUser.role === 'Ingeniero' || this.currentUser.role === 'Supervisor') {
             document.getElementById('engineer-menus').style.display = 'block';
@@ -75,6 +130,11 @@ const app = {
         }
 
         this.navigate('dashboard');
+        
+        // Ensure gauge resizes properly on first app show
+        setTimeout(() => {
+            if(app.gauge) app.gauge.resize();
+        }, 300);
     },
 
     navigate(module) {
@@ -86,6 +146,11 @@ const app = {
         
         const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.innerText.toLowerCase().includes(module.substring(0, 3)));
         if(btn) btn.classList.add('active');
+
+        // Fix canvas sizing on tab switch
+        if(module === 'spaghetti' && app.spaghetti.canvas) {
+            app.spaghetti.resizeCanvas();
+        }
     },
 
     initGauge() {
@@ -96,13 +161,13 @@ const app = {
             data: {
                 datasets: [{
                     data: [0, 100],
-                    backgroundColor: ['#10B981', '#1E293B'],
+                    backgroundColor: ['#10B981', '#E2E8F0'],
                     borderWidth: 0,
                     circumference: 180,
                     rotation: 270,
                 }]
             },
-            options: { cutout: '85%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+            options: { cutout: '85%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
         });
     },
 
@@ -148,7 +213,7 @@ const app = {
             const panel = document.querySelector('.timer-panel');
             if (subDiff > STANDARD_TIME * ANDON_THRESHOLD) panel.style.borderColor = 'var(--accent-danger)';
             else if (subDiff > STANDARD_TIME) panel.style.borderColor = 'var(--accent-warning)';
-            else panel.style.borderColor = 'var(--panel-hover)';
+            else panel.style.borderColor = '#E2E8F0';
         },
 
         handleStartLap() {
@@ -182,9 +247,8 @@ const app = {
                 this.btnStart.disabled = true;
             } else {
                 const now = Date.now();
-                // Adjust start times by the paused duration (approximate without storing pause intervals)
+                // Adjust start times
                 const pausedDur = now - this.subStartTime;
-                // Complex pause logic simplified for SPA
                 this.startTime += pausedDur;
                 this.subStartTime += pausedDur;
                 
@@ -205,7 +269,7 @@ const app = {
             this.cycleCount = 0;
             this.display.innerText = "00:00:00";
             this.subDisplay.innerText = "PARCIAL: 00:00.00";
-            document.querySelector('.timer-panel').style.borderColor = 'var(--panel-hover)';
+            document.querySelector('.timer-panel').style.borderColor = '#E2E8F0';
             this.btnStart.innerText = "INICIAR CAPTURA";
             this.btnStart.className = "btn btn-green btn-block";
             this.btnStart.disabled = false;
@@ -364,7 +428,7 @@ const app = {
             // Specs
             const LSL = 1.70; const USL = 1.80;
             const mean = diams.reduce((a,b) => a+b, 0) / diams.length;
-            const stdev = Math.sqrt(diams.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / (diams.length - 1)) || 0.001; // Avoid div 0
+            const stdev = Math.sqrt(diams.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / (diams.length - 1)) || 0.001; 
             
             const cp = (USL - LSL) / (6 * stdev);
             const cpl = (mean - LSL) / (3 * stdev);
@@ -381,11 +445,162 @@ const app = {
     },
 
     smed: {
-        calculate() {
-            const intTime = parseFloat(document.getElementById('smed-int').value) || 0;
-            const extTime = parseFloat(document.getElementById('smed-ext').value) || 0;
-            const total = intTime + extTime;
-            document.getElementById('smed-result').innerText = `Tiempo de Cambio (C/O): ${total.toFixed(2)} min`;
+        chart: null,
+        init() {
+            const ctx = document.getElementById('smedChart');
+            if(!ctx) return;
+            this.chart = new Chart(ctx.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Interno (Máquina Parada)', 'Externo (Máquina Corriendo)'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#EF4444', '#10B981'],
+                        borderWidth: 2, borderColor: '#FFFFFF'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+            this.refresh();
+        },
+        addTask() {
+            const name = document.getElementById('smed-task-name').value;
+            const type = document.getElementById('smed-task-type').value;
+            const time = parseFloat(document.getElementById('smed-task-time').value);
+            
+            if(!name || !time) return alert('Ingrese nombre y tiempo de la tarea');
+            
+            db.add('ecolens_smed', { name, type, time });
+            
+            document.getElementById('smed-task-name').value = '';
+            document.getElementById('smed-task-time').value = '';
+            this.refresh();
+        },
+        delTask(id) {
+            db.remove('ecolens_smed', id);
+            this.refresh();
+        },
+        refresh() {
+            const tbody = document.getElementById('smed-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            
+            const tasks = db.get('ecolens_smed');
+            let intTime = 0; let extTime = 0;
+            
+            tasks.forEach(t => {
+                if(t.type === 'Interno') intTime += parseFloat(t.time);
+                else extTime += parseFloat(t.time);
+                
+                const tr = document.createElement('tr');
+                const badge = t.type === 'Interno' ? 'badge-int' : 'badge-ext';
+                tr.innerHTML = `
+                    <td>${t.name}</td>
+                    <td><span class="smed-badge ${badge}">${t.type}</span></td>
+                    <td>${t.time} min</td>
+                    <td><button class="log-del" onclick="app.smed.delTask('${t.id}')">🗑️</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('lbl-total-int').innerText = `INT: ${intTime.toFixed(1)} min`;
+            document.getElementById('lbl-total-ext').innerText = `EXT: ${extTime.toFixed(1)} min`;
+            
+            if(this.chart) {
+                this.chart.data.datasets[0].data = [intTime, extTime];
+                this.chart.update();
+            }
+        }
+    },
+
+    spaghetti: {
+        canvas: null, ctx: null, points: [], isDrawing: false,
+        
+        init() {
+            this.canvas = document.getElementById('spaghettiCanvas');
+            if(!this.canvas) return;
+            this.ctx = this.canvas.getContext('2d');
+            
+            // Set canvas resolution
+            this.resizeCanvas();
+            window.addEventListener('resize', () => this.resizeCanvas());
+
+            // Bind events
+            this.canvas.addEventListener('mousedown', (e) => this.addPoint(e));
+            
+            // Load saved
+            this.points = db.get('ecolens_spaghetti') || [];
+            this.redraw();
+        },
+        
+        resizeCanvas() {
+            const rect = this.canvas.parentElement.getBoundingClientRect();
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+            this.redraw();
+        },
+        
+        addPoint(e) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            this.points.push({x, y});
+            db.set('ecolens_spaghetti', this.points);
+            this.redraw();
+        },
+        
+        undo() {
+            this.points.pop();
+            db.set('ecolens_spaghetti', this.points);
+            this.redraw();
+        },
+        
+        clearAll() {
+            if(confirm('¿Borrar todo el diagrama?')) {
+                this.points = [];
+                db.set('ecolens_spaghetti', this.points);
+                this.redraw();
+            }
+        },
+        
+        redraw() {
+            if(!this.ctx) return;
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            if(this.points.length === 0) {
+                document.getElementById('spaghetti-dist').innerText = "0.0";
+                return;
+            }
+            
+            this.ctx.beginPath();
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeStyle = '#2563EB'; // Blue
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            
+            let distance = 0;
+            
+            this.points.forEach((p, i) => {
+                if(i === 0) this.ctx.moveTo(p.x, p.y);
+                else {
+                    this.ctx.lineTo(p.x, p.y);
+                    const prev = this.points[i-1];
+                    distance += Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.y - prev.y, 2));
+                }
+            });
+            this.ctx.stroke();
+            
+            // Draw points
+            this.points.forEach((p, i) => {
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, i === 0 ? 6 : 4, 0, Math.PI * 2);
+                this.ctx.fillStyle = i === 0 ? '#10B981' : '#EF4444'; // Start green, rest red
+                this.ctx.fill();
+            });
+            
+            // Assuming 100px = 1 meter approx for the scale
+            const meters = distance / 100;
+            document.getElementById('spaghetti-dist').innerText = meters.toFixed(1);
         }
     }
 };

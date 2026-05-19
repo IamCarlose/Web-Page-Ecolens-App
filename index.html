@@ -5,31 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ecolens App | Calidad Industrial</title>
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500;600;800&display=swap" rel="stylesheet">
     <!-- Chart.js for Gauges and Charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- LOGIN VIEW -->
+    <!-- LOGIN / REGISTRATION VIEW -->
     <div id="login-view" class="view-container active">
         <div class="login-box">
             <div class="login-logo">
-                <img src="https://raw.githubusercontent.com/IamCarlose/Ecolens-App/main/Ecolens%20App%20Logo%20Transparent.png" alt="Ecolens Logo" onerror="this.style.display='none'">
                 <h1>ECOLENS<span>APP</span></h1>
                 <p>— QUALITY ASSURANCE —</p>
             </div>
             
-            <div class="login-form">
+            <!-- Login Form -->
+            <div id="form-login" class="login-form">
                 <div class="input-group">
-                    <label>Usuario (Credencial Industrial)</label>
-                    <input type="text" id="username" placeholder="Ingrese su nombre de usuario" value="admin">
+                    <label>Usuario</label>
+                    <input type="text" id="username" placeholder="Ingrese su usuario">
                 </div>
                 <div class="input-group">
-                    <label>Contraseña de Acceso</label>
-                    <input type="password" id="password" placeholder="Ingrese contraseña" value="ecolens2024">
+                    <label>Contraseña</label>
+                    <input type="password" id="password" placeholder="Ingrese contraseña">
                 </div>
-                <button class="btn btn-primary btn-block" onclick="app.login()">INICIAR SESIÓN</button>
+                <button class="btn btn-primary btn-block" onclick="app.auth.login()">INICIAR SESIÓN</button>
+                <button class="btn btn-link btn-block" onclick="app.auth.toggleForm()">¿No tienes cuenta? Regístrate</button>
+            </div>
+
+            <!-- Register Form -->
+            <div id="form-register" class="login-form" style="display: none;">
+                <div class="input-group">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="reg-name" placeholder="Ej: Carlos">
+                </div>
+                <div class="input-group">
+                    <label>Usuario</label>
+                    <input type="text" id="reg-username" placeholder="Ej: c.admin">
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="reg-password" placeholder="Crea una contraseña">
+                </div>
+                <div class="input-group">
+                    <label>Rol Industrial</label>
+                    <select id="reg-role">
+                        <option value="Operador">Operador (Básico)</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Ingeniero">Ingeniero (Full Access)</option>
+                    </select>
+                </div>
+                <button class="btn btn-green btn-block" onclick="app.auth.register()">CREAR CUENTA</button>
+                <button class="btn btn-link btn-block" onclick="app.auth.toggleForm()">Ya tengo cuenta. Iniciar Sesión</button>
             </div>
         </div>
     </div>
@@ -43,7 +70,7 @@
             </div>
             <div class="top-user">
                 <span id="user-info">Ingeniero | admin</span>
-                <button class="btn btn-outline btn-sm" onclick="app.logout()">CERRAR SESIÓN</button>
+                <button class="btn btn-outline btn-sm" onclick="app.auth.logout()">CERRAR SESIÓN</button>
             </div>
         </header>
 
@@ -104,13 +131,12 @@
                         <div class="timer-controls">
                             <button id="btn-start-lap" class="btn btn-green btn-block" onclick="app.dashboard.handleStartLap()">INICIAR CAPTURA</button>
                             <button id="btn-pause" class="btn btn-gray btn-block" onclick="app.dashboard.togglePause()" disabled>PAUSAR</button>
-                            <button id="btn-reset" class="btn btn-outline btn-block" onclick="app.dashboard.clearData()">LIMPIAR REINICIAR</button>
+                            <button id="btn-reset" class="btn btn-outline btn-block" onclick="app.dashboard.clearData()">REINICIAR</button>
                         </div>
                         
                         <div class="history-section">
-                            <h4>HISTORIAL DE CICLO (REGISTROS)</h4>
+                            <h4>HISTORIAL DE CICLO</h4>
                             <div class="history-list" id="lap-history-list">
-                                <!-- Laps go here -->
                                 <div class="history-header">
                                     <span style="width: 40px">ID</span>
                                     <span style="width: 130px">DURACIÓN</span>
@@ -128,7 +154,7 @@
                         <!-- Left Panel: Inputs -->
                         <div class="panel">
                             <h2>HILDEGARD Industrial Data</h2>
-                            <p class="subtitle">Toma de Datos Modular</p>
+                            <p class="subtitle">Toma de Datos Modular para IoT e Inspección</p>
 
                             <div class="input-section">
                                 <h4 class="text-blue">CONTROL DE TEMPERATURA</h4>
@@ -155,7 +181,7 @@
                             </div>
 
                             <div class="input-section">
-                                <h4 class="text-gray">CONTROL DE DIÁMETRO</h4>
+                                <h4 style="color: #475569;">CONTROL DE DIÁMETRO</h4>
                                 <div class="input-row">
                                     <input type="number" id="h-diam" placeholder="Diám (mm)">
                                     <button class="btn btn-gray" onclick="app.hildegard.saveDiam()">💾 REGISTRAR</button>
@@ -174,18 +200,10 @@
                                 <button class="tab-btn" onclick="app.hildegard.switchTab('diam')">DIÁMETRO</button>
                             </div>
 
-                            <div class="tab-content active" id="tab-temp">
-                                <div class="log-list" id="list-temp"></div>
-                            </div>
-                            <div class="tab-content" id="tab-press">
-                                <div class="log-list" id="list-press"></div>
-                            </div>
-                            <div class="tab-content" id="tab-rpm">
-                                <div class="log-list" id="list-rpm"></div>
-                            </div>
-                            <div class="tab-content" id="tab-diam">
-                                <div class="log-list" id="list-diam"></div>
-                            </div>
+                            <div class="tab-content active" id="tab-temp"><div class="log-list" id="list-temp"></div></div>
+                            <div class="tab-content" id="tab-press"><div class="log-list" id="list-press"></div></div>
+                            <div class="tab-content" id="tab-rpm"><div class="log-list" id="list-rpm"></div></div>
+                            <div class="tab-content" id="tab-diam"><div class="log-list" id="list-diam"></div></div>
                         </div>
                     </div>
                 </section>
@@ -194,13 +212,13 @@
                 <section id="mod-monitoring" class="module">
                     <div class="panel">
                         <h2>MONITOREO AVANZADO</h2>
-                        <p class="subtitle">Gestión de Defectos y Capacidad</p>
+                        <p class="subtitle">Gestión de Defectos y Capacidad Estadística</p>
                         
                         <div class="two-col-layout" style="margin-top: 20px;">
                             <div class="card">
-                                <h3>Registrar Defecto</h3>
+                                <h3 style="margin-bottom: 15px;">Registrar Defecto</h3>
                                 <div class="input-group">
-                                    <label>Tipo de Defecto</label>
+                                    <label>Tipo de Defecto Detectado en Línea</label>
                                     <select id="m-defect-type">
                                         <option value="Burbujas">Burbujas</option>
                                         <option value="Impurezas">Impurezas</option>
@@ -208,23 +226,23 @@
                                         <option value="Variación Diámetro">Variación Diámetro</option>
                                     </select>
                                 </div>
-                                <button class="btn btn-danger" onclick="app.monitoring.saveDefect()">⚠️ REGISTRAR DEFECTO</button>
+                                <button class="btn btn-danger btn-block" onclick="app.monitoring.saveDefect()">⚠️ REGISTRAR DEFECTO</button>
                                 
-                                <h4 style="margin-top: 20px;">Últimos Defectos</h4>
+                                <h4 style="margin-top: 25px; margin-bottom: 10px; font-size: 0.85rem; color: var(--text-s);">ÚLTIMOS DEFECTOS REGISTRADOS</h4>
                                 <div class="log-list" id="list-defects" style="height: 200px;"></div>
                             </div>
                             
                             <div class="card bg-slate">
-                                <h3>Capacidad del Proceso</h3>
-                                <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px;">Métricas Cp y Cpk basadas en diámetros (Specs: 1.70 - 1.80 mm)</p>
+                                <h3 style="margin-bottom: 5px;">Capacidad del Proceso</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-s); margin-bottom: 20px;">Análisis en tiempo real de Cp y Cpk usando datos de diámetro (Specs: 1.70 - 1.80 mm).</p>
                                 
                                 <div class="kpi-row" style="grid-template-columns: 1fr 1fr; margin-bottom: 0;">
                                     <div class="kpi-card">
-                                        <span>Cp</span>
+                                        <span>ÍNDICE CP</span>
                                         <h3 id="kpi-cp" class="text-blue">---</h3>
                                     </div>
                                     <div class="kpi-card">
-                                        <span>Cpk</span>
+                                        <span>ÍNDICE CPK</span>
                                         <h3 id="kpi-cpk" class="text-green">---</h3>
                                     </div>
                                 </div>
@@ -238,21 +256,56 @@
                 <section id="mod-smed" class="module">
                     <div class="panel">
                         <h2>SMED OPTIMIZER</h2>
-                        <p class="subtitle">Single-Minute Exchange of Die</p>
-                        <div class="card bg-slate" style="margin-top: 20px;">
-                            <h3>Calculadora de Tiempos de Cambio</h3>
-                            <div class="kpi-row" style="grid-template-columns: 1fr 1fr;">
+                        <p class="subtitle">Single-Minute Exchange of Die (Análisis de Tiempos de Cambio)</p>
+                        
+                        <div class="two-col-layout">
+                            <!-- SMED Input -->
+                            <div class="card">
+                                <h3 style="margin-bottom: 15px;">Registrar Tarea de Cambio</h3>
                                 <div class="input-group">
-                                    <label>Tiempo Interno Total (min)</label>
-                                    <input type="number" id="smed-int" value="0">
+                                    <label>Descripción de la tarea</label>
+                                    <input type="text" id="smed-task-name" placeholder="Ej: Buscar llave inglesa">
                                 </div>
                                 <div class="input-group">
-                                    <label>Tiempo Externo Total (min)</label>
-                                    <input type="number" id="smed-ext" value="0">
+                                    <label>Tipo de Tarea</label>
+                                    <select id="smed-task-type">
+                                        <option value="Interno">Interno (Máquina Parada)</option>
+                                        <option value="Externo">Externo (Máquina Corriendo)</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Tiempo tomado (minutos)</label>
+                                    <input type="number" id="smed-task-time" placeholder="Ej: 5" min="0" step="0.1">
+                                </div>
+                                <button class="btn btn-blue btn-block" onclick="app.smed.addTask()">AGREGAR TAREA</button>
+                                
+                                <h4 style="margin-top: 25px; margin-bottom: 10px; font-size: 0.85rem; color: var(--text-s);">DESGLOSE DE TIEMPOS</h4>
+                                <div class="smed-chart-wrapper">
+                                    <canvas id="smedChart"></canvas>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-top:10px; font-weight:800;">
+                                    <span class="text-danger" id="lbl-total-int">INT: 0 min</span>
+                                    <span class="text-green" id="lbl-total-ext">EXT: 0 min</span>
                                 </div>
                             </div>
-                            <button class="btn btn-blue" onclick="app.smed.calculate()">CALCULAR TIEMPO DE CAMBIO</button>
-                            <h3 id="smed-result" style="margin-top: 20px;" class="text-green">---</h3>
+                            
+                            <!-- SMED Table -->
+                            <div class="card bg-slate" style="overflow-y: auto; max-height: 600px;">
+                                <h3 style="margin-bottom: 15px;">Listado de Actividades</h3>
+                                <table class="smed-task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tarea</th>
+                                            <th>Tipo</th>
+                                            <th>Tiempo (m)</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="smed-table-body">
+                                        <!-- SMED Tasks Here -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -263,8 +316,7 @@
                         <h2>ESTADÍSTICA / DOE</h2>
                         <p class="subtitle">Diseño de Experimentos y Tablas de Control</p>
                         <div class="card bg-slate" style="margin-top: 20px;">
-                            <p style="color: #cbd5e1;">Módulo estadístico para análisis de varianza y efectos principales. En esta versión web, los datos se consolidan en el módulo Hildegard y Monitoreo.</p>
-                            <button class="btn btn-outline mt-20" onclick="alert('Funcionalidad en desarrollo para la versión web.')">GENERAR ANOVA</button>
+                            <p style="color: var(--text-s);">Este módulo complementa a Monitoreo. Se utilizarán herramientas estadísticas de análisis en futuras integraciones. Para ver métricas en tiempo real de proceso (Cp/Cpk), dirígete al panel de Monitoreo Avanzado.</p>
                         </div>
                     </div>
                 </section>
@@ -273,12 +325,21 @@
                 <section id="mod-spaghetti" class="module">
                     <div class="panel">
                         <h2>DIAGRAMA DE SPAGHETTI</h2>
-                        <p class="subtitle">Análisis de Flujos y Movimientos</p>
-                        <div class="card bg-slate" style="margin-top: 20px; text-align: center; padding: 40px;">
-                            <p style="color: #cbd5e1; margin-bottom: 20px;">Sube o mapea el recorrido de la planta (layout interactivo no implementado completamente en web).</p>
-                            <div style="width: 100%; height: 300px; border: 2px dashed #475569; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                <span style="color: #64748b;">Área de Mapeo de Layout</span>
+                        <p class="subtitle">Mapeo Interactivo de Recorridos en Planta</p>
+                        
+                        <div class="card">
+                            <div class="spaghetti-toolbar">
+                                <button class="btn btn-blue btn-sm" onclick="app.spaghetti.setMode('draw')">✏️ Dibujar Ruta</button>
+                                <button class="btn btn-gray btn-sm" onclick="app.spaghetti.undo()">↩️ Deshacer Último</button>
+                                <button class="btn btn-danger btn-sm" onclick="app.spaghetti.clearAll()">🧨 Limpiar Todo</button>
+                                <div style="margin-left: auto; display: flex; align-items: center; font-weight: 800;">
+                                    Distancia Total Estimada: <span id="spaghetti-dist" class="text-blue" style="margin-left: 10px; font-size:1.2rem;">0.0</span> m
+                                </div>
                             </div>
+                            <div class="spaghetti-canvas-container" id="spaghetti-container">
+                                <canvas id="spaghettiCanvas"></canvas>
+                            </div>
+                            <p style="margin-top:10px; font-size:0.8rem; color:var(--text-s);">Haz clic para trazar puntos en el layout. La distancia se calcula en base a la escala visual.</p>
                         </div>
                     </div>
                 </section>
