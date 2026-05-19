@@ -125,8 +125,6 @@ input:focus, select:focus { outline: none; border-color: var(--accent-blue); box
 }
 .gauge-container p { font-size: 0.7rem; font-weight: 800; color: var(--text-s); margin-bottom: 0.5rem; }
 .global-gauge-wrapper { width: 100%; height: 120px; position: relative; display: flex; justify-content: center; }
-/* Important for chartjs relative sizing */
-.global-gauge-wrapper canvas { width: 100% !important; height: 100% !important; }
 
 /* CONTENT PORT */
 .content-port { flex: 1; padding: 2rem 3rem; overflow-y: auto; scroll-behavior: smooth; }
@@ -195,7 +193,6 @@ input:focus, select:focus { outline: none; border-color: var(--accent-blue); box
 .badge-int { background: #FEE2E2; color: #EF4444; }
 .badge-ext { background: #D1FAE5; color: #10B981; }
 .smed-chart-wrapper { width: 100%; height: 250px; position: relative; margin-top: 2rem; }
-.smed-chart-wrapper canvas { width: 100% !important; height: 100% !important; }
 
 /* SPAGHETTI CANVAS */
 .spaghetti-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; background: #FFFFFF; padding: 1rem; border-radius: var(--radius-md); border: 1px solid #E2E8F0; }

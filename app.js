@@ -151,10 +151,18 @@ const app = {
         const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.innerText.toLowerCase().includes(module.substring(0, 3)));
         if(btn) btn.classList.add('active');
 
-        // Fix canvas sizing on tab switch
+        // Fix canvas sizing on tab switch by recreating charts when visible
         setTimeout(() => {
-            if(module === 'dashboard' && app.gauge) app.gauge.resize();
-            if(module === 'smed' && app.smed.chart) app.smed.chart.resize();
+            if(module === 'dashboard') {
+                app.initGauge();
+                // Check if there is data to update gauge
+                if(app.dashboard.laps.length > 0) {
+                    const lastLap = app.dashboard.laps[app.dashboard.laps.length - 1].lap;
+                    let oee = Math.floor((STANDARD_TIME / lastLap) * 100);
+                    app.updateGauge(oee > 100 ? 100 : oee);
+                }
+            }
+            if(module === 'smed') app.smed.initChart();
             if(module === 'spaghetti' && app.spaghetti.canvas) app.spaghetti.resizeCanvas();
         }, 50);
     },
@@ -162,6 +170,9 @@ const app = {
     initGauge() {
         const ctx = document.getElementById('globalGauge');
         if(!ctx) return;
+        
+        if(this.gauge) this.gauge.destroy();
+        
         this.gauge = new Chart(ctx.getContext('2d'), {
             type: 'doughnut',
             data: {
@@ -170,10 +181,10 @@ const app = {
                     backgroundColor: ['#10B981', '#E2E8F0'],
                     borderWidth: 0,
                     circumference: 180,
-                    rotation: 270,
+                    rotation: -90,
                 }]
             },
-            options: { cutout: '85%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+            options: { cutout: '85%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: false }
         });
     },
 
@@ -453,21 +464,26 @@ const app = {
     smed: {
         chart: null,
         init() {
+            this.refresh();
+        },
+        initChart(intTime = 0, extTime = 0) {
             const ctx = document.getElementById('smedChart');
             if(!ctx) return;
+            
+            if(this.chart) this.chart.destroy();
+            
             this.chart = new Chart(ctx.getContext('2d'), {
                 type: 'pie',
                 data: {
                     labels: ['Interno (Máquina Parada)', 'Externo (Máquina Corriendo)'],
                     datasets: [{
-                        data: [0, 0],
+                        data: [intTime, extTime],
                         backgroundColor: ['#EF4444', '#10B981'],
                         borderWidth: 2, borderColor: '#FFFFFF'
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, animation: false }
             });
-            this.refresh();
         },
         addTask() {
             const name = document.getElementById('smed-task-name').value;
@@ -512,10 +528,7 @@ const app = {
             document.getElementById('lbl-total-int').innerText = `INT: ${intTime.toFixed(1)} min`;
             document.getElementById('lbl-total-ext').innerText = `EXT: ${extTime.toFixed(1)} min`;
             
-            if(this.chart) {
-                this.chart.data.datasets[0].data = [intTime, extTime];
-                this.chart.update();
-            }
+            this.initChart(intTime, extTime);
         }
     },
 
