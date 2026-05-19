@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecolens App | Calidad Industrial</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Gauges and Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- LOGIN VIEW -->
+    <div id="login-view" class="view-container active">
+        <div class="login-box">
+            <div class="login-logo">
+                <img src="https://raw.githubusercontent.com/IamCarlose/Ecolens-App/main/Ecolens%20App%20Logo%20Transparent.png" alt="Ecolens Logo" onerror="this.style.display='none'">
+                <h1>ECOLENS<span>APP</span></h1>
+                <p>— QUALITY ASSURANCE —</p>
+            </div>
+            
+            <div class="login-form">
+                <div class="input-group">
+                    <label>Usuario (Credencial Industrial)</label>
+                    <input type="text" id="username" placeholder="Ingrese su nombre de usuario" value="admin">
+                </div>
+                <div class="input-group">
+                    <label>Contraseña de Acceso</label>
+                    <input type="password" id="password" placeholder="Ingrese contraseña" value="ecolens2024">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="app.login()">INICIAR SESIÓN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APPLICATION -->
+    <div id="main-app" class="view-container">
+        <!-- TOP BAR -->
+        <header class="top-bar">
+            <div class="top-logo">
+                <span>ECOLENS</span> OS
+            </div>
+            <div class="top-user">
+                <span id="user-info">Ingeniero | admin</span>
+                <button class="btn btn-outline btn-sm" onclick="app.logout()">CERRAR SESIÓN</button>
+            </div>
+        </header>
+
+        <div class="app-body">
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>ECOLENS APP</h2>
+                    <p>— QUALITY ASSURANCE —</p>
+                </div>
+                <nav class="sidebar-nav">
+                    <button class="nav-btn active" onclick="app.navigate('dashboard')">⚡ DASHBOARD</button>
+                    <button class="nav-btn" onclick="app.navigate('smed')">🎯 SMED OPTIMIZER</button>
+                    <button class="nav-btn" onclick="app.navigate('spaghetti')">⚛️ FLUX DIAGRAM</button>
+                    <button class="nav-btn" onclick="app.navigate('hildegard')">🔥 HILDEGARD 2.0</button>
+                    
+                    <div id="engineer-menus">
+                        <button class="nav-btn" onclick="app.navigate('doe')">🧪 ESTADÍSTICA / DOE</button>
+                        <button class="nav-btn" onclick="app.navigate('monitoring')">🖥️ MONITOREO AVANZADO</button>
+                    </div>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="gauge-container">
+                        <p>RENDIMIENTO OEE</p>
+                        <div class="global-gauge-wrapper">
+                            <canvas id="globalGauge"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- CONTENT PORT -->
+            <main class="content-port">
+                <!-- DASHBOARD MODULE -->
+                <section id="mod-dashboard" class="module active">
+                    <div class="kpi-row">
+                        <div class="kpi-card">
+                            <span>ÚLTIMO REGISTRO</span>
+                            <h3 id="kpi-last-lap" class="text-blue">---</h3>
+                        </div>
+                        <div class="kpi-card">
+                            <span>PROMEDIO (TURNO)</span>
+                            <h3 id="kpi-avg-lap" class="text-green">---</h3>
+                        </div>
+                        <div class="kpi-card">
+                            <span>EFICIENCIA OEE (%)</span>
+                            <h3 id="kpi-oee-dash" class="text-warning">0%</h3>
+                        </div>
+                    </div>
+
+                    <div class="timer-panel">
+                        <div class="timer-display">
+                            <h1 id="main-timer">00:00:00</h1>
+                            <h3 id="sub-timer">PARCIAL: 00:00.00</h3>
+                        </div>
+                        
+                        <div class="timer-controls">
+                            <button id="btn-start-lap" class="btn btn-green btn-block" onclick="app.dashboard.handleStartLap()">INICIAR CAPTURA</button>
+                            <button id="btn-pause" class="btn btn-gray btn-block" onclick="app.dashboard.togglePause()" disabled>PAUSAR</button>
+                            <button id="btn-reset" class="btn btn-outline btn-block" onclick="app.dashboard.clearData()">LIMPIAR REINICIAR</button>
+                        </div>
+                        
+                        <div class="history-section">
+                            <h4>HISTORIAL DE CICLO (REGISTROS)</h4>
+                            <div class="history-list" id="lap-history-list">
+                                <!-- Laps go here -->
+                                <div class="history-header">
+                                    <span style="width: 40px">ID</span>
+                                    <span style="width: 130px">DURACIÓN</span>
+                                    <span style="width: 150px">TOTAL ACUMULADO</span>
+                                </div>
+                                <div id="lap-items"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- HILDEGARD MODULE -->
+                <section id="mod-hildegard" class="module">
+                    <div class="two-col-layout">
+                        <!-- Left Panel: Inputs -->
+                        <div class="panel">
+                            <h2>HILDEGARD Industrial Data</h2>
+                            <p class="subtitle">Toma de Datos Modular</p>
+
+                            <div class="input-section">
+                                <h4 class="text-blue">CONTROL DE TEMPERATURA</h4>
+                                <div class="input-row">
+                                    <input type="number" id="h-temp" placeholder="Temp (°C)">
+                                    <button class="btn btn-blue" onclick="app.hildegard.saveTemp()">💾 REGISTRAR</button>
+                                </div>
+                            </div>
+
+                            <div class="input-section">
+                                <h4 class="text-warning">CONTROL DE PRESIÓN</h4>
+                                <div class="input-row">
+                                    <input type="number" id="h-press" placeholder="Presión (PSI)">
+                                    <button class="btn btn-warning" onclick="app.hildegard.savePress()">💾 REGISTRAR</button>
+                                </div>
+                            </div>
+
+                            <div class="input-section">
+                                <h4 class="text-green">CONTROL DE RPM / RAPIDEZ</h4>
+                                <div class="input-row">
+                                    <input type="number" id="h-rpm" placeholder="RPM / m/min">
+                                    <button class="btn btn-green" onclick="app.hildegard.saveRPM()">💾 REGISTRAR</button>
+                                </div>
+                            </div>
+
+                            <div class="input-section">
+                                <h4 class="text-gray">CONTROL DE DIÁMETRO</h4>
+                                <div class="input-row">
+                                    <input type="number" id="h-diam" placeholder="Diám (mm)">
+                                    <button class="btn btn-gray" onclick="app.hildegard.saveDiam()">💾 REGISTRAR</button>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-outline btn-block text-danger border-danger mt-20" onclick="app.hildegard.clearAll()">🧨 BORRAR HISTORIAL MODULAR</button>
+                        </div>
+
+                        <!-- Right Panel: History -->
+                        <div class="panel">
+                            <div class="tabs">
+                                <button class="tab-btn active" onclick="app.hildegard.switchTab('temp')">TEMPERATURA</button>
+                                <button class="tab-btn" onclick="app.hildegard.switchTab('press')">PRESIÓN</button>
+                                <button class="tab-btn" onclick="app.hildegard.switchTab('rpm')">RPM</button>
+                                <button class="tab-btn" onclick="app.hildegard.switchTab('diam')">DIÁMETRO</button>
+                            </div>
+
+                            <div class="tab-content active" id="tab-temp">
+                                <div class="log-list" id="list-temp"></div>
+                            </div>
+                            <div class="tab-content" id="tab-press">
+                                <div class="log-list" id="list-press"></div>
+                            </div>
+                            <div class="tab-content" id="tab-rpm">
+                                <div class="log-list" id="list-rpm"></div>
+                            </div>
+                            <div class="tab-content" id="tab-diam">
+                                <div class="log-list" id="list-diam"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MONITORING MODULE -->
+                <section id="mod-monitoring" class="module">
+                    <div class="panel">
+                        <h2>MONITOREO AVANZADO</h2>
+                        <p class="subtitle">Gestión de Defectos y Capacidad</p>
+                        
+                        <div class="two-col-layout" style="margin-top: 20px;">
+                            <div class="card">
+                                <h3>Registrar Defecto</h3>
+                                <div class="input-group">
+                                    <label>Tipo de Defecto</label>
+                                    <select id="m-defect-type">
+                                        <option value="Burbujas">Burbujas</option>
+                                        <option value="Impurezas">Impurezas</option>
+                                        <option value="Ruptura">Ruptura</option>
+                                        <option value="Variación Diámetro">Variación Diámetro</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-danger" onclick="app.monitoring.saveDefect()">⚠️ REGISTRAR DEFECTO</button>
+                                
+                                <h4 style="margin-top: 20px;">Últimos Defectos</h4>
+                                <div class="log-list" id="list-defects" style="height: 200px;"></div>
+                            </div>
+                            
+                            <div class="card bg-slate">
+                                <h3>Capacidad del Proceso</h3>
+                                <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px;">Métricas Cp y Cpk basadas en diámetros (Specs: 1.70 - 1.80 mm)</p>
+                                
+                                <div class="kpi-row" style="grid-template-columns: 1fr 1fr; margin-bottom: 0;">
+                                    <div class="kpi-card">
+                                        <span>Cp</span>
+                                        <h3 id="kpi-cp" class="text-blue">---</h3>
+                                    </div>
+                                    <div class="kpi-card">
+                                        <span>Cpk</span>
+                                        <h3 id="kpi-cpk" class="text-green">---</h3>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline btn-block mt-20" onclick="app.monitoring.calcCapability()">CALCULAR CP / CPK</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SMED MODULE -->
+                <section id="mod-smed" class="module">
+                    <div class="panel">
+                        <h2>SMED OPTIMIZER</h2>
+                        <p class="subtitle">Single-Minute Exchange of Die</p>
+                        <div class="card bg-slate" style="margin-top: 20px;">
+                            <h3>Calculadora de Tiempos de Cambio</h3>
+                            <div class="kpi-row" style="grid-template-columns: 1fr 1fr;">
+                                <div class="input-group">
+                                    <label>Tiempo Interno Total (min)</label>
+                                    <input type="number" id="smed-int" value="0">
+                                </div>
+                                <div class="input-group">
+                                    <label>Tiempo Externo Total (min)</label>
+                                    <input type="number" id="smed-ext" value="0">
+                                </div>
+                            </div>
+                            <button class="btn btn-blue" onclick="app.smed.calculate()">CALCULAR TIEMPO DE CAMBIO</button>
+                            <h3 id="smed-result" style="margin-top: 20px;" class="text-green">---</h3>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DOE MODULE -->
+                <section id="mod-doe" class="module">
+                    <div class="panel">
+                        <h2>ESTADÍSTICA / DOE</h2>
+                        <p class="subtitle">Diseño de Experimentos y Tablas de Control</p>
+                        <div class="card bg-slate" style="margin-top: 20px;">
+                            <p style="color: #cbd5e1;">Módulo estadístico para análisis de varianza y efectos principales. En esta versión web, los datos se consolidan en el módulo Hildegard y Monitoreo.</p>
+                            <button class="btn btn-outline mt-20" onclick="alert('Funcionalidad en desarrollo para la versión web.')">GENERAR ANOVA</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SPAGHETTI MODULE -->
+                <section id="mod-spaghetti" class="module">
+                    <div class="panel">
+                        <h2>DIAGRAMA DE SPAGHETTI</h2>
+                        <p class="subtitle">Análisis de Flujos y Movimientos</p>
+                        <div class="card bg-slate" style="margin-top: 20px; text-align: center; padding: 40px;">
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">Sube o mapea el recorrido de la planta (layout interactivo no implementado completamente en web).</p>
+                            <div style="width: 100%; height: 300px; border: 2px dashed #475569; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #64748b;">Área de Mapeo de Layout</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
