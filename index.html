@@ -314,10 +314,37 @@
                 <!-- DOE MODULE -->
                 <section id="mod-doe" class="module">
                     <div class="panel">
-                        <h2>ESTADÍSTICA / DOE</h2>
-                        <p class="subtitle">Diseño de Experimentos y Tablas de Control</p>
-                        <div class="card bg-slate" style="margin-top: 20px;">
-                            <p style="color: var(--text-s);">Este módulo complementa a Monitoreo. Se utilizarán herramientas estadísticas de análisis en futuras integraciones. Para ver métricas en tiempo real de proceso (Cp/Cpk), dirígete al panel de Monitoreo Avanzado.</p>
+                        <h2>📈 ESTADÍSTICA / DOE</h2>
+                        <p class="subtitle">Gráficos de Control y Análisis de Proceso</p>
+                        
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                            <button class="btn btn-blue btn-sm" onclick="app.doe.initCharts()">🔄 Actualizar Gráficos</button>
+                        </div>
+
+                        <div class="two-col-layout" style="margin-bottom: 2rem;">
+                            <!-- Control Chart X-R -->
+                            <div class="card">
+                                <h4 style="font-size: 0.85rem; color: var(--text-s); margin-bottom: 10px; text-transform: uppercase;">Gráfico de Control: Diámetro vs Tiempo</h4>
+                                <div style="width: 100%; height: 250px; position: relative;">
+                                    <canvas id="doeControlChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Histogram -->
+                            <div class="card">
+                                <h4 style="font-size: 0.85rem; color: var(--text-s); margin-bottom: 10px; text-transform: uppercase;">Histograma de Distribución</h4>
+                                <div style="width: 100%; height: 250px; position: relative;">
+                                    <canvas id="doeHistChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Scatter Plot -->
+                        <div class="card" style="width: 100%;">
+                            <h4 style="font-size: 0.85rem; color: var(--text-s); margin-bottom: 10px; text-transform: uppercase;">Correlación: Temperatura vs RPM</h4>
+                            <div style="width: 100%; height: 300px; position: relative;">
+                                <canvas id="doeScatterChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </section>

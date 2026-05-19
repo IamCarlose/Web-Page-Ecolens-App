@@ -163,6 +163,7 @@ const app = {
                 }
             }
             if(module === 'smed') app.smed.initChart();
+            if(module === 'doe') app.doe.initCharts();
             if(module === 'spaghetti' && app.spaghetti.canvas) app.spaghetti.resizeCanvas();
         }, 50);
     },
@@ -689,6 +690,7 @@ const app = {
         },
         
         redraw() {
+            // (Spaghetti redraw logic remains unchanged)
             if(!this.ctx) return;
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             
@@ -750,6 +752,191 @@ const app = {
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(n.name.substring(0, 8), n.x, n.y);
+            });
+        }
+    },
+
+    doe: {
+        controlChart: null,
+        histChart: null,
+        scatterChart: null,
+
+        initCharts() {
+            this.renderControlChart();
+            this.renderHistogram();
+            this.renderScatter();
+        },
+
+        renderControlChart() {
+            const ctx = document.getElementById('doeControlChart');
+            if(!ctx) return;
+            if(this.controlChart) this.controlChart.destroy();
+
+            const diams = db.get('ecolens_diam').map(d => parseFloat(d.val));
+            const labels = diams.map((_, i) => i + 1);
+
+            const usl = diams.map(() => 1.80);
+            const lsl = diams.map(() => 1.70);
+            const nominal = diams.map(() => 1.75);
+
+            this.controlChart = new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels.length > 0 ? labels : [1, 2, 3],
+                    datasets: [
+                        {
+                            label: 'Diámetro Medido',
+                            data: diams.length > 0 ? diams : [0, 0, 0],
+                            borderColor: '#2563EB',
+                            backgroundColor: '#2563EB',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'USL (1.80)',
+                            data: usl.length > 0 ? usl : [1.80, 1.80, 1.80],
+                            borderColor: '#EF4444',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'LSL (1.70)',
+                            data: lsl.length > 0 ? lsl : [1.70, 1.70, 1.70],
+                            borderColor: '#EF4444',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Nominal (1.75)',
+                            data: nominal.length > 0 ? nominal : [1.75, 1.75, 1.75],
+                            borderColor: '#10B981',
+                            borderWidth: 2,
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        y: {
+                            min: 1.60,
+                            max: 1.90,
+                            title: { display: true, text: 'Milímetros (mm)' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Lecturas' }
+                        }
+                    },
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } }
+                }
+            });
+        },
+
+        renderHistogram() {
+            const ctx = document.getElementById('doeHistChart');
+            if(!ctx) return;
+            if(this.histChart) this.histChart.destroy();
+
+            const diams = db.get('ecolens_diam').map(d => parseFloat(d.val));
+            let labels = [];
+            let data = [];
+
+            if(diams.length > 0) {
+                const min = Math.min(...diams);
+                const max = Math.max(...diams);
+                const bins = 8;
+                const step = (max === min) ? 0.1 : (max - min) / bins;
+                const start = (max === min) ? min - 0.4 : min;
+                
+                let counts = new Array(bins).fill(0);
+                labels = Array.from({length: bins}, (_, i) => (start + i * step).toFixed(2));
+                
+                diams.forEach(d => {
+                    let binIndex = Math.floor((d - start) / step);
+                    if(binIndex >= bins) binIndex = bins - 1;
+                    if(binIndex < 0) binIndex = 0;
+                    counts[binIndex]++;
+                });
+                data = counts;
+            } else {
+                labels = ['1.6', '1.7', '1.8', '1.9'];
+                data = [0, 0, 0, 0];
+            }
+
+            this.histChart = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Frecuencia',
+                        data: data,
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                        borderColor: '#10B981',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Conteo' } },
+                        x: { title: { display: true, text: 'Rango de Diámetro (mm)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        },
+
+        renderScatter() {
+            const ctx = document.getElementById('doeScatterChart');
+            if(!ctx) return;
+            if(this.scatterChart) this.scatterChart.destroy();
+
+            const temps = db.get('ecolens_temp').map(d => parseFloat(d.val));
+            const rpms = db.get('ecolens_rpm').map(d => parseFloat(d.val));
+            
+            let scatterData = [];
+            const minLen = Math.min(temps.length, rpms.length);
+            
+            for(let i=0; i<minLen; i++) {
+                scatterData.push({ x: temps[i], y: rpms[i] });
+            }
+
+            this.scatterChart = new Chart(ctx.getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Temp vs RPM',
+                        data: scatterData.length > 0 ? scatterData : [{x: 0, y: 0}],
+                        backgroundColor: '#F59E0B',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Temperatura (°C)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Velocidad Tracción (RPM)' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
             });
         }
     }
