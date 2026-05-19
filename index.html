@@ -8,6 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500;600;800&display=swap" rel="stylesheet">
     <!-- Chart.js for Gauges and Charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -317,7 +321,9 @@
                         <h2>📈 ESTADÍSTICA / DOE</h2>
                         <p class="subtitle">Gráficos de Control y Análisis de Proceso</p>
                         
-                        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px;">
+                            <button class="btn btn-outline btn-sm text-danger border-danger" onclick="app.report.generatePDF()">📄 Descargar Informe PDF</button>
+                            <button class="btn btn-green btn-sm" onclick="app.report.generateExcel()">📊 Exportar a Excel</button>
                             <button class="btn btn-blue btn-sm" onclick="app.doe.initCharts()">🔄 Actualizar Gráficos</button>
                         </div>
 

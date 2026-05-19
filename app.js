@@ -939,6 +939,203 @@ const app = {
                 }
             });
         }
+    },
+
+    report: {
+        async getChartImages() {
+            const charts = ['doeControlChart', 'doeHistChart', 'doeScatterChart'];
+            let images = [];
+            for (let id of charts) {
+                const canvas = document.getElementById(id);
+                if (canvas) {
+                    const canvasImage = await html2canvas(canvas);
+                    images.push(canvasImage.toDataURL("image/png"));
+                } else {
+                    images.push(null);
+                }
+            }
+            return images;
+        },
+
+        getSummaryStats() {
+            const diams = db.get('ecolens_diam').map(d => parseFloat(d.val));
+            let mean = 0, std = 0, cp = 0, cpk = 0;
+            if (diams.length > 1) {
+                mean = diams.reduce((a,b) => a+b, 0) / diams.length;
+                std = Math.sqrt(diams.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / (diams.length - 1)) || 0.001; 
+                cp = (1.80 - 1.70) / (6 * std);
+                const cpl = (mean - 1.70) / (3 * std);
+                const cpu = (1.80 - mean) / (3 * std);
+                cpk = Math.min(cpl, cpu);
+            } else if (diams.length === 1) {
+                mean = diams[0];
+            }
+            const defects = db.get('ecolens_defects').length;
+            
+            let statusText = "Sin datos suficientes para evaluar la capacidad.";
+            if (diams.length > 1) {
+                if (cpk >= 1.33) statusText = "Excelente. El proceso es altamente capaz y está centrado dentro de las especificaciones de ingeniería.";
+                else if (cpk >= 1.0) statusText = "Aceptable. El proceso cumple con los límites, pero requiere monitoreo para evitar derivas.";
+                else statusText = "Crítico. El proceso es incapaz y está generando producto fuera de especificación. Se requiere ajuste inmediato.";
+            }
+
+            return { mean, std, cp, cpk, defects, count: diams.length, statusText };
+        },
+
+        async generatePDF() {
+            try {
+                if(!window.jspdf) return alert("Cargando librerías... intente en unos segundos.");
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const stats = this.getSummaryStats();
+                const user = app.currentUser ? app.currentUser.name : 'Usuario Desconocido';
+                const date = new Date().toLocaleString();
+
+                // Header
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(22);
+                pdf.setTextColor(37, 99, 235); // Blue
+                pdf.text("ECOLENS APP", 20, 20);
+                
+                pdf.setFontSize(14);
+                pdf.setTextColor(15, 23, 42); // Dark
+                pdf.text("REPORTE ESTADÍSTICO DE INGENIERÍA", 20, 30);
+                
+                pdf.setFontSize(10);
+                pdf.setFont("helvetica", "normal");
+                pdf.setTextColor(100, 116, 139); // Gray
+                pdf.text(`Generado por: ${user} | Fecha: ${date}`, 20, 38);
+                
+                pdf.line(20, 42, 190, 42);
+
+                // Summary Assertive Text
+                pdf.setFontSize(12);
+                pdf.setFont("helvetica", "bold");
+                pdf.setTextColor(15, 23, 42);
+                pdf.text("Resumen Ejecutivo del Proceso:", 20, 50);
+                
+                pdf.setFont("helvetica", "normal");
+                pdf.setFontSize(11);
+                pdf.text(`Muestras evaluadas: ${stats.count}`, 20, 58);
+                pdf.text(`Diámetro Promedio: ${stats.mean.toFixed(3)} mm (Objetivo: 1.75 mm)`, 20, 64);
+                pdf.text(`Índice Cp: ${stats.cp.toFixed(2)} | Índice Cpk: ${stats.cpk.toFixed(2)}`, 20, 70);
+                pdf.text(`Defectos Críticos Detectados: ${stats.defects}`, 20, 76);
+                
+                pdf.setFont("helvetica", "italic");
+                if(stats.cpk < 1.0) pdf.setTextColor(239, 68, 68);
+                else pdf.setTextColor(16, 185, 129);
+                pdf.text(`Diagnóstico: ${stats.statusText}`, 20, 84);
+
+                // Add Images
+                const images = await this.getChartImages();
+                
+                if (images[0]) {
+                    pdf.setFont("helvetica", "bold");
+                    pdf.setTextColor(15, 23, 42);
+                    pdf.text("1. Gráfico de Control (Diámetro vs Tiempo)", 20, 95);
+                    pdf.addImage(images[0], 'PNG', 20, 100, 170, 55);
+                }
+                
+                if (images[1]) {
+                    pdf.text("2. Histograma de Distribución", 20, 165);
+                    pdf.addImage(images[1], 'PNG', 20, 170, 170, 55);
+                }
+                
+                if (images[2]) {
+                    pdf.addPage();
+                    pdf.text("3. Correlación: Temperatura vs Velocidad Tracción", 20, 20);
+                    pdf.addImage(images[2], 'PNG', 20, 25, 170, 65);
+                }
+
+                pdf.save(`Ecolens_Reporte_${Date.now()}.pdf`);
+            } catch (e) {
+                console.error(e);
+                alert("Hubo un error al generar el PDF.");
+            }
+        },
+
+        async generateExcel() {
+            try {
+                if(!window.ExcelJS) return alert("Cargando librerías... intente en unos segundos.");
+                const wb = new ExcelJS.Workbook();
+                const stats = this.getSummaryStats();
+                
+                // SHEET 1: Resumen
+                const ws1 = wb.addWorksheet('Resumen Analítico');
+                
+                // Styles
+                ws1.getColumn('A').width = 30;
+                ws1.getColumn('B').width = 20;
+                ws1.getColumn('C').width = 20;
+
+                ws1.mergeCells('A1:C1');
+                const title = ws1.getCell('A1');
+                title.value = 'ECOLENS APP - REPORTE DE INGENIERÍA';
+                title.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+                title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+                title.alignment = { horizontal: 'center' };
+
+                ws1.getCell('A3').value = 'Métricas Clave';
+                ws1.getCell('A3').font = { bold: true };
+                
+                ws1.getCell('A4').value = 'Muestras Analizadas';
+                ws1.getCell('B4').value = stats.count;
+                
+                ws1.getCell('A5').value = 'Diámetro Promedio (mm)';
+                ws1.getCell('B5').value = stats.mean.toFixed(3);
+                
+                ws1.getCell('A6').value = 'Índice de Capacidad (Cpk)';
+                ws1.getCell('B6').value = stats.cpk.toFixed(2);
+                
+                ws1.getCell('A7').value = 'Total de Defectos';
+                ws1.getCell('B7').value = stats.defects;
+                
+                ws1.getCell('A9').value = 'Diagnóstico del Sistema:';
+                ws1.getCell('A9').font = { bold: true };
+                ws1.mergeCells('A10:C10');
+                ws1.getCell('A10').value = stats.statusText;
+                if(stats.cpk < 1.0) ws1.getCell('A10').font = { color: { argb: 'FFEF4444' } };
+                else ws1.getCell('A10').font = { color: { argb: 'FF10B981' } };
+
+                // Embebbed Charts in Excel
+                const images = await this.getChartImages();
+                if (images[0]) {
+                    const imgId1 = wb.addImage({ base64: images[0], extension: 'png' });
+                    ws1.addImage(imgId1, 'E2:O15');
+                }
+                if (images[1]) {
+                    const imgId2 = wb.addImage({ base64: images[1], extension: 'png' });
+                    ws1.addImage(imgId2, 'E17:O30');
+                }
+                
+                // SHEET 2: Datos Crudos
+                const ws2 = wb.addWorksheet('Datos Crudos (Diámetro)');
+                ws2.columns = [
+                    { header: 'ID', key: 'id', width: 20 },
+                    { header: 'Hora', key: 'time', width: 15 },
+                    { header: 'Diámetro (mm)', key: 'val', width: 20 }
+                ];
+                ws2.getRow(1).font = { bold: true };
+                ws2.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+                
+                const diams = db.get('ecolens_diam');
+                diams.forEach(d => ws2.addRow(d));
+
+                // Generate File
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `Ecolens_Datos_${Date.now()}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (e) {
+                console.error(e);
+                alert("Hubo un error al generar el Excel.");
+            }
+        }
     }
 };
 
