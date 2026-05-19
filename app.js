@@ -31,10 +31,14 @@ const app = {
     gauge: null,
     
     init() {
-        // Init users array if empty
+        // Init users array if empty with the strictly reserved engineers
         if(!localStorage.getItem('ecolens_users_db')) {
             localStorage.setItem('ecolens_users_db', JSON.stringify([
-                { name: 'Admin', username: 'admin', password: '123', role: 'Ingeniero' }
+                { name: 'Admin', username: 'admin', password: '123', role: 'Ingeniero' },
+                { name: 'Carlos López', username: 'Carlos López', password: 'C.Lopez*2026!', role: 'Ingeniero' },
+                { name: 'Natalia Arteaga', username: 'Natalia Arteaga', password: 'N4rt34g4_Eng#26', role: 'Ingeniero' },
+                { name: 'David Hernández', username: 'David Hernández', password: 'david.hernandez_99$', role: 'Ingeniero' },
+                { name: 'Lorena Negrete', username: 'Lorena Negrete', password: 'L.Negrete*2026!', role: 'Ingeniero' }
             ]));
         }
 
