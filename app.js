@@ -152,9 +152,11 @@ const app = {
         if(btn) btn.classList.add('active');
 
         // Fix canvas sizing on tab switch
-        if(module === 'spaghetti' && app.spaghetti.canvas) {
-            app.spaghetti.resizeCanvas();
-        }
+        setTimeout(() => {
+            if(module === 'dashboard' && app.gauge) app.gauge.resize();
+            if(module === 'smed' && app.smed.chart) app.smed.chart.resize();
+            if(module === 'spaghetti' && app.spaghetti.canvas) app.spaghetti.resizeCanvas();
+        }, 50);
     },
 
     initGauge() {
@@ -518,22 +520,35 @@ const app = {
     },
 
     spaghetti: {
-        canvas: null, ctx: null, points: [], isDrawing: false,
+        canvas: null, ctx: null, 
+        nodes: [], edges: [], paths: [],
+        mode: null, // 'link', 'draw', null
+        selectedNode: null,
+        dragNode: null,
+        isDrawing: false,
+        currentPath: [],
         
         init() {
             this.canvas = document.getElementById('spaghettiCanvas');
             if(!this.canvas) return;
             this.ctx = this.canvas.getContext('2d');
             
-            // Set canvas resolution
             this.resizeCanvas();
             window.addEventListener('resize', () => this.resizeCanvas());
 
             // Bind events
-            this.canvas.addEventListener('mousedown', (e) => this.addPoint(e));
+            this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+            this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+            this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
             
-            // Load saved
-            this.points = db.get('ecolens_spaghetti') || [];
+            const saved = db.get('ecolens_spag_data');
+            if(saved && !Array.isArray(saved)) {
+                this.nodes = saved.nodes || [];
+                this.edges = saved.edges || [];
+                this.paths = saved.paths || [];
+            } else {
+                this.nodes = []; this.edges = []; this.paths = [];
+            }
             this.redraw();
         },
         
@@ -544,25 +559,118 @@ const app = {
             this.redraw();
         },
         
-        addPoint(e) {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            this.points.push({x, y});
-            db.set('ecolens_spaghetti', this.points);
+        save() {
+            db.set('ecolens_spag_data', { nodes: this.nodes, edges: this.edges, paths: this.paths });
+        },
+
+        addNode() {
+            let name = document.getElementById('spag-name').value;
+            if(!name) name = `EST-${this.nodes.length + 1}`;
+            const shape = document.getElementById('spag-shape').value;
+            const color = document.getElementById('spag-color').value;
+            
+            this.nodes.push({ id: Date.now().toString(), name, shape, color, x: 100, y: 100 });
+            document.getElementById('spag-name').value = '';
+            this.save();
             this.redraw();
         },
-        
+
+        toggleMode(newMode) {
+            if(this.mode === newMode) this.mode = null;
+            else this.mode = newMode;
+            
+            document.getElementById('btn-spag-link').className = this.mode === 'link' ? 'btn btn-blue btn-block' : 'btn btn-outline btn-block';
+            document.getElementById('btn-spag-draw').className = this.mode === 'draw' ? 'btn btn-blue btn-block' : 'btn btn-outline btn-block';
+            this.selectedNode = null;
+        },
+
         undo() {
-            this.points.pop();
-            db.set('ecolens_spaghetti', this.points);
+            if(this.paths.length > 0) this.paths.pop();
+            else if(this.edges.length > 0) this.edges.pop();
+            else if(this.nodes.length > 0) this.nodes.pop();
+            this.save();
             this.redraw();
         },
-        
+
         clearAll() {
             if(confirm('¿Borrar todo el diagrama?')) {
-                this.points = [];
-                db.set('ecolens_spaghetti', this.points);
+                this.nodes = []; this.edges = []; this.paths = [];
+                this.save();
+                this.redraw();
+            }
+        },
+
+        getMousePos(e) {
+            const rect = this.canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        },
+
+        findNode(x, y) {
+            for(let i=this.nodes.length-1; i>=0; i--) {
+                const n = this.nodes[i];
+                if(Math.abs(n.x - x) <= 40 && Math.abs(n.y - y) <= 40) return n;
+            }
+            return null;
+        },
+
+        onMouseDown(e) {
+            const pos = this.getMousePos(e);
+            const clickedNode = this.findNode(pos.x, pos.y);
+
+            if(this.mode === 'link') {
+                if(clickedNode) {
+                    if(!this.selectedNode) {
+                        this.selectedNode = clickedNode.id;
+                    } else if (this.selectedNode !== clickedNode.id) {
+                        this.edges.push({ from: this.selectedNode, to: clickedNode.id });
+                        this.selectedNode = null;
+                        this.save();
+                    }
+                } else {
+                    this.selectedNode = null;
+                }
+            } else if (this.mode === 'draw') {
+                this.isDrawing = true;
+                this.currentPath = [pos];
+            } else {
+                // Drag mode
+                if(clickedNode) this.dragNode = clickedNode;
+            }
+            this.redraw();
+        },
+
+        onMouseMove(e) {
+            const pos = this.getMousePos(e);
+            if(this.dragNode) {
+                this.dragNode.x = pos.x;
+                this.dragNode.y = pos.y;
+                this.redraw();
+            } else if(this.isDrawing) {
+                this.currentPath.push(pos);
+                this.redraw();
+                // Draw current temp path
+                this.ctx.beginPath();
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeStyle = '#2563EB';
+                this.currentPath.forEach((p, i) => {
+                    if(i===0) this.ctx.moveTo(p.x, p.y);
+                    else this.ctx.lineTo(p.x, p.y);
+                });
+                this.ctx.stroke();
+            }
+        },
+
+        onMouseUp(e) {
+            if(this.dragNode) {
+                this.save();
+                this.dragNode = null;
+            } else if (this.isDrawing) {
+                this.isDrawing = false;
+                if(this.currentPath.length > 1) {
+                    this.paths.push([...this.currentPath]);
+                    this.save();
+                }
+                this.currentPath = [];
                 this.redraw();
             }
         },
@@ -571,40 +679,65 @@ const app = {
             if(!this.ctx) return;
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             
-            if(this.points.length === 0) {
-                document.getElementById('spaghetti-dist').innerText = "0.0";
-                return;
-            }
-            
-            this.ctx.beginPath();
-            this.ctx.lineWidth = 3;
-            this.ctx.strokeStyle = '#2563EB'; // Blue
-            this.ctx.lineCap = 'round';
-            this.ctx.lineJoin = 'round';
-            
-            let distance = 0;
-            
-            this.points.forEach((p, i) => {
-                if(i === 0) this.ctx.moveTo(p.x, p.y);
-                else {
-                    this.ctx.lineTo(p.x, p.y);
-                    const prev = this.points[i-1];
-                    distance += Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.y - prev.y, 2));
+            // Draw paths
+            this.paths.forEach(path => {
+                this.ctx.beginPath();
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeStyle = '#94A3B8';
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                path.forEach((p, i) => {
+                    if(i === 0) this.ctx.moveTo(p.x, p.y);
+                    else this.ctx.lineTo(p.x, p.y);
+                });
+                this.ctx.stroke();
+            });
+
+            // Draw edges
+            this.edges.forEach(e => {
+                const n1 = this.nodes.find(n => n.id === e.from);
+                const n2 = this.nodes.find(n => n.id === e.to);
+                if(n1 && n2) {
+                    this.ctx.beginPath();
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeStyle = '#64748B';
+                    this.ctx.moveTo(n1.x, n1.y);
+                    this.ctx.lineTo(n2.x, n2.y);
+                    this.ctx.stroke();
                 }
             });
-            this.ctx.stroke();
-            
-            // Draw points
-            this.points.forEach((p, i) => {
-                this.ctx.beginPath();
-                this.ctx.arc(p.x, p.y, i === 0 ? 6 : 4, 0, Math.PI * 2);
-                this.ctx.fillStyle = i === 0 ? '#10B981' : '#EF4444'; // Start green, rest red
-                this.ctx.fill();
+
+            // Draw nodes
+            this.nodes.forEach(n => {
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = n.color;
+                this.ctx.fillStyle = '#FFFFFF';
+
+                if(n.shape === 'circle') {
+                    this.ctx.beginPath();
+                    this.ctx.arc(n.x, n.y, 40, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.rect(n.x - 40, n.y - 40, 80, 80);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+
+                // Highlight selected
+                if(this.selectedNode === n.id) {
+                    this.ctx.strokeStyle = '#F59E0B';
+                    this.ctx.lineWidth = 4;
+                    this.ctx.stroke();
+                }
+
+                this.ctx.fillStyle = n.color;
+                this.ctx.font = 'bold 10px Inter';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(n.name.substring(0, 8), n.x, n.y);
             });
-            
-            // Assuming 100px = 1 meter approx for the scale
-            const meters = distance / 100;
-            document.getElementById('spaghetti-dist').innerText = meters.toFixed(1);
         }
     }
 };

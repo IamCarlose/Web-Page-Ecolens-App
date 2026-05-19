@@ -53,7 +53,6 @@
                     <select id="reg-role">
                         <option value="Operador">Operador (Básico)</option>
                         <option value="Supervisor">Supervisor</option>
-                        <option value="Ingeniero">Ingeniero (Full Access)</option>
                     </select>
                 </div>
                 <button class="btn btn-green btn-block" onclick="app.auth.register()">CREAR CUENTA</button>
@@ -327,21 +326,47 @@
                 <section id="mod-spaghetti" class="module">
                     <div class="panel">
                         <h2>DIAGRAMA DE SPAGHETTI</h2>
-                        <p class="subtitle">Mapeo Interactivo de Recorridos en Planta</p>
+                        <p class="subtitle">Diseño de Layout y Flujo de Procesos (v4.8)</p>
                         
-                        <div class="card">
-                            <div class="spaghetti-toolbar">
-                                <button class="btn btn-blue btn-sm" onclick="app.spaghetti.setMode('draw')">✏️ Dibujar Ruta</button>
-                                <button class="btn btn-gray btn-sm" onclick="app.spaghetti.undo()">↩️ Deshacer Último</button>
-                                <button class="btn btn-danger btn-sm" onclick="app.spaghetti.clearAll()">🧨 Limpiar Todo</button>
-                                <div style="margin-left: auto; display: flex; align-items: center; font-weight: 800;">
-                                    Distancia Total Estimada: <span id="spaghetti-dist" class="text-blue" style="margin-left: 10px; font-size:1.2rem;">0.0</span> m
+                        <div class="two-col-layout" style="grid-template-columns: 280px 1fr; gap: 1.5rem;">
+                            <!-- Sidebar Controls -->
+                            <div class="card bg-slate" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <h4>AÑADIR ESTACIÓN</h4>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <input type="text" id="spag-name" placeholder="Nombre Estación">
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <select id="spag-shape">
+                                        <option value="square">Cuadrado</option>
+                                        <option value="circle">Círculo</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <select id="spag-color">
+                                        <option value="#10B981">Verde</option>
+                                        <option value="#2563EB">Azul</option>
+                                        <option value="#F59E0B">Naranja</option>
+                                        <option value="#64748B">Gris</option>
+                                        <option value="#EF4444">Rojo</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-green btn-block" onclick="app.spaghetti.addNode()">+ AÑADIR NODO</button>
+                                
+                                <hr style="border: 1px solid #E2E8F0; margin: 0.5rem 0;">
+                                
+                                <button id="btn-spag-link" class="btn btn-outline btn-block" onclick="app.spaghetti.toggleMode('link')">🔗 CONECTAR</button>
+                                <button id="btn-spag-draw" class="btn btn-outline btn-block" onclick="app.spaghetti.toggleMode('draw')">✏️ DIBUJO LIBRE</button>
+                                
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                    <button class="btn btn-gray" style="flex: 1;" onclick="app.spaghetti.undo()">↩</button>
+                                    <button class="btn btn-danger" style="flex: 1;" onclick="app.spaghetti.clearAll()">🧨 Limpiar</button>
                                 </div>
                             </div>
+
+                            <!-- Canvas Area -->
                             <div class="spaghetti-canvas-container" id="spaghetti-container">
                                 <canvas id="spaghettiCanvas"></canvas>
                             </div>
-                            <p style="margin-top:10px; font-size:0.8rem; color:var(--text-s);">Haz clic para trazar puntos en el layout. La distancia se calcula en base a la escala visual.</p>
                         </div>
                     </div>
                 </section>
