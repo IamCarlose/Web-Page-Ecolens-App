@@ -29,6 +29,25 @@ const db = {
 const app = {
     currentUser: null,
     gauge: null,
+    apiURL: 'https://script.google.com/macros/s/AKfycbyN1_Wf4vnvad_pHkx7cQo6fNgah90j21busfajrf0BKsBPbuXpr8cHGzUIDo5Fzj2h/exec',
+
+    async sendToGoogleSheets(type, value) {
+        if(!this.apiURL) return;
+        const data = {
+            timestamp: new Date().toLocaleString(),
+            user: this.currentUser ? this.currentUser.name : 'Desconocido',
+            type: type,
+            value: value
+        };
+        try {
+            fetch(this.apiURL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(data)
+            });
+        } catch(e) { console.error("Error sending to sheets", e); }
+    },
     
     init() {
         // Init users array if empty with the strictly reserved engineers
@@ -252,6 +271,7 @@ const app = {
                 this.cycleCount++;
                 this.laps.push({ id: this.cycleCount, lap, total });
                 this.subStartTime = now;
+                app.sendToGoogleSheets('Dashboard - Producción', `Lap: ${lap.toFixed(2)}s | Total: ${total.toFixed(2)}s`);
                 this.syncHistory();
             }
         },
@@ -338,33 +358,37 @@ const app = {
             this.refresh('rpm');
             this.refresh('diam');
         },
+        _save(key, val, unit) {
+            const data = db.get(`ecolens_${key}`);
+            const item = { id: Date.now().toString(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), val, unit };
+            data.push(item);
+            db.set(`ecolens_${key}`, data);
+            app.sendToGoogleSheets(`Hildegard - ${key}`, `${val} ${unit}`);
+            this.refresh(key);
+        },
         saveTemp() {
             const v = document.getElementById('h-temp').value;
             if(!v) return;
-            db.add('ecolens_temp', { val: v, unit: '°C' });
+            this._save('temp', v, '°C');
             document.getElementById('h-temp').value = '';
-            this.refresh('temp');
         },
         savePress() {
             const v = document.getElementById('h-press').value;
             if(!v) return;
-            db.add('ecolens_press', { val: v, unit: 'PSI' });
+            this._save('press', v, 'PSI');
             document.getElementById('h-press').value = '';
-            this.refresh('press');
         },
         saveRPM() {
             const v = document.getElementById('h-rpm').value;
             if(!v) return;
-            db.add('ecolens_rpm', { val: v, unit: 'RPM' });
+            this._save('rpm', v, 'RPM');
             document.getElementById('h-rpm').value = '';
-            this.refresh('rpm');
         },
         saveDiam() {
             const v = document.getElementById('h-diam').value;
             if(!v) return;
-            db.add('ecolens_diam', { val: v, unit: 'mm' });
+            this._save('diam', v, 'mm');
             document.getElementById('h-diam').value = '';
-            this.refresh('diam');
         },
         del(key, id) {
             if(confirm('¿Eliminar registro?')) {
@@ -412,6 +436,7 @@ const app = {
         saveDefect() {
             const type = document.getElementById('m-defect-type').value;
             db.add('ecolens_defects', { val: type, unit: '' });
+            app.sendToGoogleSheets('Monitoreo - Defecto', type);
             this.refresh();
         },
         del(id) {
@@ -494,6 +519,7 @@ const app = {
             if(!name || !time) return alert('Ingrese nombre y tiempo de la tarea');
             
             db.add('ecolens_smed', { name, type, time });
+            app.sendToGoogleSheets(`SMED - ${type}`, `${name}: ${time} min`);
             
             document.getElementById('smed-task-name').value = '';
             document.getElementById('smed-task-time').value = '';
