@@ -35,7 +35,7 @@ const app = {
     async sendToGoogleSheets(type, value) {
         if(!this.apiURL) return;
         const timestamp = new Date().toLocaleString();
-        const user = this.currentUser ? this.currentUser.name : 'Desconocido';
+        const user = this.currentUser ? `${this.currentUser.name} (${this.currentUser.role})` : 'Desconocido';
         
         // Bulletproof GET request avoids CORS and 302 body-drop issues
         const url = `${this.apiURL}?timestamp=${encodeURIComponent(timestamp)}&user=${encodeURIComponent(user)}&type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`;
