@@ -3,26 +3,27 @@ const OEE_THRESHOLD = 15.0;
 const ANDON_THRESHOLD = 1.25;
 
 const db = {
-    get: (key) => JSON.parse(localStorage.getItem(key)) || [],
-    set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
-    add: (key, item) => {
-        const data = db.get(key);
+    _k: (k) => app.currentUser ? `${app.currentUser.username}_${k}` : k,
+    get: function(key) { return JSON.parse(localStorage.getItem(this._k(key))) || []; },
+    set: function(key, data) { localStorage.setItem(this._k(key), JSON.stringify(data)); },
+    add: function(key, item) {
+        const data = this.get(key);
         item.id = Date.now().toString();
         item.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         data.push(item);
-        db.set(key, data);
+        this.set(key, data);
         return item.id;
     },
-    remove: (key, id) => {
-        let data = db.get(key);
+    remove: function(key, id) {
+        let data = this.get(key);
         data = data.filter(d => d.id !== id);
-        db.set(key, data);
+        this.set(key, data);
     },
-    clearAll: () => {
-        localStorage.removeItem('ecolens_temp');
-        localStorage.removeItem('ecolens_press');
-        localStorage.removeItem('ecolens_rpm');
-        localStorage.removeItem('ecolens_diam');
+    clearAll: function() {
+        localStorage.removeItem(this._k('ecolens_temp'));
+        localStorage.removeItem(this._k('ecolens_press'));
+        localStorage.removeItem(this._k('ecolens_rpm'));
+        localStorage.removeItem(this._k('ecolens_diam'));
     }
 };
 
@@ -33,19 +34,14 @@ const app = {
 
     async sendToGoogleSheets(type, value) {
         if(!this.apiURL) return;
-        const data = {
-            timestamp: new Date().toLocaleString(),
-            user: this.currentUser ? this.currentUser.name : 'Desconocido',
-            type: type,
-            value: value
-        };
+        const timestamp = new Date().toLocaleString();
+        const user = this.currentUser ? this.currentUser.name : 'Desconocido';
+        
+        // Bulletproof GET request avoids CORS and 302 body-drop issues
+        const url = `${this.apiURL}?timestamp=${encodeURIComponent(timestamp)}&user=${encodeURIComponent(user)}&type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`;
+        
         try {
-            fetch(this.apiURL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify(data)
-            });
+            fetch(url, { mode: 'no-cors' });
         } catch(e) { console.error("Error sending to sheets", e); }
     },
     
